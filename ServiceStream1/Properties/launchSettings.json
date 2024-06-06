@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ServiceStream1": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

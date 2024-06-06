@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ServiceRPC": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

@@ -1,0 +1,129 @@
+version: '3.4'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.10.7-management
+    hostname: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=rmuser
+      - RABBITMQ_DEFAULT_PASS=rmpassword
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+    volumes:
+      - ./rabbitmq:/var/lib/rabbitmq 
+      - ./rabbitmq/etc:/etc/rabbitmq/rabbitmq.config 
+    ports:
+      - 15672:15672
+      - 5672:5672
+    networks:
+      - rabbitmq
+
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 11223344
+      PGDATA: /data/postgres
+    volumes:
+       - postgres:/data/postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres
+    restart: unless-stopped
+  
+  pgadmin:
+    container_name: pgadmin_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pavlovskyivan79@gmail.com  
+      PGADMIN_DEFAULT_PASSWORD: pgadmin11223344
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - postgres
+    restart: unless-stopped
+
+  service1:
+    image: ${DOCKER_REGISTRY-}service1
+    build:
+      context: .
+      dockerfile: Service1/Dockerfile
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - postgres
+      - rabbitmq
+    links:
+      - postgres
+
+  servicestream1:
+    image: ${DOCKER_REGISTRY-}servicestream1
+    build:
+      context: .
+      dockerfile: ServiceStream1/Dockerfile
+    depends_on:
+      - rabbitmq
+    networks:
+      - rabbitmq
+
+  servicerpc:
+    image: ${DOCKER_REGISTRY-}servicerpc
+    build:
+      context: .
+      dockerfile: ServiceRPC/Dockerfile
+    depends_on:
+      - rabbitmq
+    networks:
+      - rabbitmq
+  server:
+    image: ${DOCKER_REGISTRY-}server
+    build:
+      context: .
+      dockerfile: Server/Dockerfile
+    depends_on:
+      - service1
+      - servicerpc
+      - servicestream1
+    networks:
+      - rabbitmq
+      
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=rmuser
+      - GF_SECURITY_ADMIN_PASSWORD=rmpassword
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    volumes:
+      - ./grafana:/var/lib/grafana
+    ports:
+      - '3000:3000'
+    depends_on:
+      - server
+    networks:
+      - postgres
+      - rabbitmq
+  # client1:
+  #   image: ${DOCKER_REGISTRY-}client1
+  #   build:
+  #     context: .
+  #     dockerfile: Client1/Dockerfile
+  #   depends_on:
+  #     - server
+
+networks:
+  postgres:
+    driver: bridge
+  rabbitmq:
+    driver: bridge
+
+volumes:
+  postgres:
+  pgadmin:
